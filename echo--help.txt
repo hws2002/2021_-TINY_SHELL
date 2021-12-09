@@ -1,0 +1,7 @@
+User Commands
+NAME echo - display a line of text
+SYNOPSIS
+echo [OPTION]... [STRING]...
+DESCRIPTION
+    -n  do not output the trailing newline
+    --help  output this help
