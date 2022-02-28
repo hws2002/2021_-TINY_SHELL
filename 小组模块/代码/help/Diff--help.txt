@@ -1,0 +1,9 @@
+diff Compare FILES line by line.
+
+--help: display this help and exit
+-b: ignore changes in the amount of white space
+-B: ignore changes where lines are all blank
+-i: ignore case differences in file contents
+-q: report only when files differ
+ -w: ignore all white space
+-I, --ignore-matching-lines=RE: ignore changes where all lines match RE

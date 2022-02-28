@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <string.h>
+#include <unistd.h>
 #define MAXLINE 10240
 #define MAXFILE 10240
 #define GREEN "\e[92;1m"
@@ -20,15 +21,15 @@ struct Terminal {
     char strin[MAXFILE]; //重定向标准输入
     char strout[MAXFILE]; //重定向标准输出
 }; Terminal gTerm;
+ifstream testing("test.txt");
 
 //函数声明区
 
-char ** getPrompt(char **prompt);
-bool checking_valid(int cmdsize,char **prompt);
+bool checking_valid(int cmdsize);
 int  splitToken(char *command, char *argv[], int cmdSize);
 char *getToken(char *arr);
 int get_strout(int argc,char *argv[]);
-void delete_memory(char ** prompt, int argc, char * argv[],char * command);
+void delete_memory(int argc, char * argv[],char * command);
 
 int Command(int argc, char *argv[]); 
 void doDiff(int argc, char * argv[]); //不读取
@@ -39,7 +40,6 @@ void doCp(int argc, char * argv[]); //不读取
 void doCd(int argc, char * argv[]); //不读取
 void doPwd(int argc, char * argv[]); //不读取
 void doEcho(int argc, char * argv[]); //不读取
-
 //主函数
 int main(int argc, char *argv[]){ 
     int cmdSize;
@@ -48,16 +48,15 @@ int main(int argc, char *argv[]){
     cout<<"Machine Name:"; cin>>gTerm.mach; cin.ignore();
     cout<<"Root Directory:"; cin>>gTerm.root; cin.ignore(); strcpy(gTerm.wdir,gTerm.root);
     cout<<"Login:"; cin>>gTerm.user; cin.ignore();
-    char ** prompt;
-    while (1) {
-        prompt = getPrompt(prompt);
-        cout<< GREEN <<prompt[0]<<prompt[1]<<prompt[2]<<RESET<<prompt[3]<<BLUE<<prompt[4]<<RESET<<prompt[5];
-        // 输入 command 储存于 gTerm.strin
-        cin.getline(gTerm.strin,MAXLINE);
-        cin.clear();
+    cout<<endl;
+    while (testing) {
+        testing.getline(gTerm.strin,MAXLINE);
+        sleep(1);
+        cout<<"输入 : "<<gTerm.strin<<"\n";
+        sleep(1);
         //如果输入只有回车，空格，则重新输入
         cmdSize = strlen(gTerm.strin);
-        bool valid = checking_valid(cmdSize,prompt);
+        bool valid = checking_valid(cmdSize);
         if(!valid) continue;
         //拆token
         command = new char[cmdSize * sizeof(char)+1];
@@ -67,14 +66,16 @@ int main(int argc, char *argv[]){
         //输出标准输出
         int left_argc = get_strout(argc,argv);
         //释放内存
-        delete_memory(prompt,argc,argv,command);
+        delete_memory(argc,argv,command);
         if (!left_argc) break;
+        cout<<endl;
     }
+    testing.close();
     return 0;
 }
 
 //函数定义区
-bool checking_valid(int cmdsize,char **prompt){
+bool checking_valid(int cmdsize){
         int m =0;
         while(m<cmdsize){
             if (gTerm.strin[m] != '\0' && gTerm.strin[m] != ' '&& gTerm.strin[m] != '\n')
@@ -82,28 +83,9 @@ bool checking_valid(int cmdsize,char **prompt){
             m++;
         }
         if(m==cmdsize){
-            for(int k=0; k<6;k++) delete (prompt[k]);
-            delete [] prompt;
             memset(gTerm.strin,0,sizeof(char)*MAXFILE);
             return false;
         } else return true;
-}
-//为了使用cd指令之后很方便地更新提示符，这样定义getPrompt函数
-char ** getPrompt(char ** prompt) { 
-    prompt = new char*[6];
-    prompt[0] = new char[strlen(gTerm.user) * sizeof(char)+1];
-    strcpy(prompt[0],gTerm.user);
-    prompt[1] = new char[1* sizeof(char)+1];
-    strcpy(prompt[1],"@");
-    prompt[2] = new char[strlen(gTerm.mach) * sizeof(char)+1];
-    strcpy(prompt[2],gTerm.mach);
-    prompt[3] = new char[1* sizeof(char)+1];
-    strcpy(prompt[3],":");
-    prompt[4] = new char[strlen(gTerm.wdir) * sizeof(char)+1];
-    strcpy(prompt[4],gTerm.wdir);
-    prompt[5] = new char[1* sizeof(char)+1];
-    strcpy(prompt[5],"$");
-    return prompt;
 }
 
 // 把标准输入里的内容拆成若干个token，存储到argv，把token个数存储到argc 
@@ -166,12 +148,12 @@ char *getToken(char *arr){
 
 int get_strout(int argc, char* argv[]){ 
     //如果输入exit则结束terminal
-    if(!strcmp(argv[0],"exit")) { //exit功能
+    if(!strcasecmp(argv[0],"exit")) { //exit功能
         return 0;
     }
     //判断是否包含符合指令
     int i=0;
-    while(i<argc && strcmp(argv[i],"|")){ // ~ ||~이런식으로 넣으면 ,여기에 argv[0] = "|"조건에서 걸림 i=0, argc 는 1이상, 이때는 그냥 parse error 만 출력하고, 설령 뒤에 올바른 명령어가 있더라도, 실행하지 않음, 단, 앞에 명령어들은 실행
+    while(i<argc && strcasecmp(argv[i],"|")){ // ~ ||~이런식으로 넣으면 ,여기에 argv[0] = "|"조건에서 걸림 i=0, argc 는 1이상, 이때는 그냥 parse error 만 출력하고, 설령 뒤에 올바른 명령어가 있더라도, 실행하지 않음, 단, 앞에 명령어들은 실행
         i++;
     }
     if (i==argc) {//"~|"形式 或者 不包含 | 
@@ -181,8 +163,9 @@ int get_strout(int argc, char* argv[]){
                 bool right_command = false;
                 int new_cmdSize = strlen(new_strin);
                 while(!right_command){
-                    cout<<"pipe> ";cin.getline(new_strin,MAXFILE);
-                    cin.clear();
+                    sleep(1);
+                    cout<<"输出 ： pipe> "; testing.getline(new_strin,MAXFILE);
+                    cout<<"再次输入 : "<<new_strin<<"\n";
                     new_cmdSize = strlen(new_strin);
                     int n =0;
                     while(n<new_cmdSize){
@@ -198,7 +181,7 @@ int get_strout(int argc, char* argv[]){
                 new_command = new char[new_cmdSize * sizeof(char)+1];
                 strcpy(new_command, new_strin);
                 argc = splitToken(new_command,argv,new_cmdSize);
-                if(!strcmp(argv[0],"exit")){
+                if(!strcasecmp(argv[0],"exit")){
                     for(int i=0; i<argc; i++){
                         delete (argv[i]);
                     }
@@ -211,10 +194,10 @@ int get_strout(int argc, char* argv[]){
             int switcher = Command(i,argv);
             switch(switcher){
                 case 0:
-                    cout<<gTerm.strout;
+                    cout<<"输出 : "<<gTerm.strout;
                     break;
                 case 1:
-                    cerr<<"command '"<<argv[0]<<"' not found\n";
+                    cerr<<"输出 : command '"<<argv[0]<<"' not found\n";
                     break;
             }
         }
@@ -224,7 +207,7 @@ int get_strout(int argc, char* argv[]){
             cerr<<"parse error near '|'\n";
             return argc;
         }
-        else if(!strcmp(argv[i+1],"cd")) { //因为真实的cd指令如果放在复合指令中间的话，不会被执行
+        else if(!strcasecmp(argv[i+1],"cd")) { //因为真实的cd指令如果放在复合指令中间的话，不会被执行
             argv += i+1;
             argc -= i+1;
             argc = get_strout(argc,argv);
@@ -239,7 +222,7 @@ int get_strout(int argc, char* argv[]){
                     argc -= i+1;
                     break;
                 case 1:
-                    cerr<<"command '"<<argv[0]<<"' not found\n";
+                    cerr<<"输出 : command '"<<argv[0]<<"' not found\n";
                     argv += i+1;
                     argc -= i+1;
                     break;
@@ -251,21 +234,19 @@ int get_strout(int argc, char* argv[]){
 }
 
 int Command(int argc, char *argv[]){
-    if(strcmp(argv[0],"diff") == 0) {doDiff(argc,argv); return 0;}
-    else if(strcmp(argv[0],"grep")==0) {doGrep(argc,argv); return 0;}
-    else if(strcmp(argv[0],"tee")==0) {doTee(argc,argv);return 0;}
-    else if(strcmp(argv[0],"cat")==0) {doCat(argc,argv);return 0;}
-    else if(strcmp(argv[0],"cp")==0) {doCp(argc,argv);return 0;}
-    else if(strcmp(argv[0],"cd")==0) {doCd(argc,argv);return 0;}
-    else if(strcmp(argv[0],"pwd")==0) {doPwd(argc,argv);return 0;}
-    else if(strcmp(argv[0],"echo")==0) {doEcho(argc,argv);return 0;}
-    else if(strcmp(argv[0],"|")==0) return 2;
+    if(strcasecmp(argv[0],"diff") == 0) {doDiff(argc,argv); return 0;}
+    else if(strcasecmp(argv[0],"grep")==0) {doGrep(argc,argv); return 0;}
+    else if(strcasecmp(argv[0],"tee")==0) {doTee(argc,argv);return 0;}
+    else if(strcasecmp(argv[0],"cat")==0) {doCat(argc,argv);return 0;}
+    else if(strcasecmp(argv[0],"cp")==0) {doCp(argc,argv);return 0;}
+    else if(strcasecmp(argv[0],"cd")==0) {doCd(argc,argv);return 0;}
+    else if(strcasecmp(argv[0],"pwd")==0) {doPwd(argc,argv);return 0;}
+    else if(strcasecmp(argv[0],"echo")==0) {doEcho(argc,argv);return 0;}
+    else if(strcasecmp(argv[0],"|")==0) return 2;
     else return 1;
 }
 
-void delete_memory(char ** prompt, int argc, char * argv[],char * command){
-    for(int k=0; k<6;k++) delete prompt[k];
-    delete [] prompt;
+void delete_memory(int argc, char * argv[],char * command){
     memset(gTerm.strin,0,sizeof(char)*MAXFILE);
     cin.clear();   
     for(int i=0; i<argc; i++){
@@ -290,7 +271,7 @@ void doEcho(int argc, char * argv[]){ //echo 指令实现
             }
         }
         else { //没选-n option
-            if(!strcmp(argv[1],"--help")){ //输入 --help 时
+            if(!strcasecmp(argv[1],"--help")){ //输入 --help 时
                 ifstream help_file("echo--help.txt");
                 int length = 0;
                 while(help_file){
